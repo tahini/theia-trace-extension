@@ -1,0 +1,83 @@
+import classNames from 'classnames';
+import { Node, NodeId } from 'react-virtualized-tree';
+import { Entry } from 'tsp-typescript-client/lib/models/entry';
+import { isUndefined } from 'util';
+import React = require('react');
+
+/**
+ * Convert the tree from the tsp server to a tree react-virtualized-tree can use to render
+ * 
+ * @param tree Default tree entry from the tsp server
+ * @param defaultState Default state of the nodes
+ */
+export const treeEntryToNodeTree = (tree: Entry[], defaultState?: { [stateKey: string]: any }) => {
+    let nodes: Node[] = [];
+    let rootIds: NodeId[] = [];
+    //Create a list of node without children
+    tree.forEach(entry => {
+        if (entry.parentId === -1) {
+            rootIds.push(entry.id);
+        }
+        nodes.push({
+            id: entry.id,
+            name: entry.labels[0],
+            state: defaultState,
+        });
+    });
+    //Add the childrens
+    nodes.forEach((node) => {
+        let childs: Node[] = [];
+        //Assign children to every node
+        tree.forEach(childrenEntry => {
+            if (childrenEntry.parentId === node.id) {
+                let childrenNode = nodes.find(({ id }) => id === childrenEntry.id)
+                if (!isUndefined(childrenNode)) {
+                    childs.push(childrenNode);
+                }
+            }
+        });
+        node.children = childs;
+    });
+    //Only return root element
+    const isRoot = ({ id }: Node) => rootIds.includes(id);
+    const rootNodes = nodes.filter(isRoot)
+    if (rootNodes.length) {
+        return rootNodes;
+    }
+    return nodes; //If there is no root element
+}
+
+
+const SELECT = 3;
+
+export const Selection = ({ node, children, onChange, onClick }: any) => {
+    const { state: { selected } } = node;
+    const className = classNames({
+        'fa fa-check-square': selected,
+        'fa fa-square': !selected,
+    });
+    const updateChildrens = () => {
+        onChange({
+            node: {
+                ...node,
+                state: {
+                    ...(node.state || {}),
+                    selected: !selected,
+                },
+            },
+            type: SELECT,
+        },
+        )
+        onClick(node.id)
+    }
+
+    return (
+        <span>
+            <i
+                className={className}
+                onClick={updateChildrens}
+            />
+            {children}
+        </span>
+    );
+};
