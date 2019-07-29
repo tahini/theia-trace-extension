@@ -12,5 +12,8 @@
     "viewer-prototype",
     "browser-app",
     "electron-app"
-  ]
+  ],
+  "dependencies": {
+    "react-virtualized-tree": "^3.2.3"
+  }
 }

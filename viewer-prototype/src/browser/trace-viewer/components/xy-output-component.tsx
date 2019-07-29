@@ -6,8 +6,8 @@ import { QueryHelper } from "tsp-typescript-client/lib/models/query/query-helper
 import { Entry, EntryHeader } from "tsp-typescript-client/lib/models/entry";
 import { ResponseStatus } from "tsp-typescript-client/lib/models/response/responses";
 import { XYSeries } from "tsp-typescript-client/lib/models/xy";
-import { CheckboxComponent } from '../components/utils/checkbox-component';
 import Chart = require("chart.js");
+import { CheckboxComponent } from "./utils/checkbox-component";
 
 type XYOuputState = AbstractOutputState & {
     selectedSeriesId: number[];

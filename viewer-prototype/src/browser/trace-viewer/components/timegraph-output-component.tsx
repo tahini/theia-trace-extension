@@ -17,13 +17,17 @@ import { AbstractTreeOutputComponent } from "./abstract-tree-output-component";
 import { StyleProvider } from './data-providers/style-provider';
 import { TspDataProvider } from './data-providers/tsp-data-provider';
 import { ReactTimeGraphContainer } from "./utils/timegraph-container-component";
+import Tree, {Node, NodeId, renderers} from 'react-virtualized-tree';
+import { isUndefined } from 'util';
+
+const {Expandable} = renderers;
 
 type TimegraphOutputProps = AbstractOutputProps & {
     addWidgetResizeHandler: (handler: () => void) => void;
 }
 
 type TimegraohOutputState = AbstractOutputState & {
-    timegraphTree: TimeGraphEntry[];
+    nodes: Node[];
 }
 
 export class TimegraphOutputComponent extends AbstractTreeOutputComponent<TimegraphOutputProps, TimegraohOutputState> {
@@ -42,7 +46,7 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
         super(props);
         this.state = {
             outputStatus: ResponseStatus.RUNNING,
-            timegraphTree: []
+            nodes: []
         };
         this.tspDataProvider = new TspDataProvider(this.props.tspClient, this.props.traceId, this.props.outputDescriptor.id);
         this.rowController = new TimeGraphRowController(this.props.style.rowHeight, this.totalHeight);
@@ -88,12 +92,45 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
         const nbEntries = treeResponse.model.entries.length;
         this.totalHeight = nbEntries * this.props.style.rowHeight;
         this.rowController.totalHeight = this.totalHeight;
+        const nodesEntry = this.treeToNode(treeResponse.model.entries)
         this.setState({
             outputStatus: ResponseStatus.COMPLETED,
-            timegraphTree: treeResponse.model.entries
+            nodes: nodesEntry
         });
     }
 
+    treeToNode = (tree: TimeGraphEntry[])  => {
+        let nodes: Node[] = [];
+        let rootIds: NodeId[] = [];
+        //Create a list of node without children
+        tree.forEach(entry => {
+            if(entry.parentId === -1){
+                rootIds.push(entry.id);
+            }
+            nodes.push({
+                id: entry.id,
+                name: entry.labels[0],
+                state: {expanded: true,},
+            });
+        });
+        //Add the childrens
+        nodes.forEach((node) => {
+            let childs: Node[] = [];
+            //Assign children to every node
+            tree.forEach(childrenEntry => {
+                if(childrenEntry.parentId === node.id){
+                    let childrenNode = nodes.find(({id}) => id === childrenEntry.id)
+                    if(!isUndefined(childrenNode)){
+                        childs.push(childrenNode);
+                    }
+                }
+            });
+            node.children = childs;
+        });
+        //Only return root element
+        const isRoot = ({id}:Node) => rootIds.includes(id);
+        return nodes.filter(isRoot);
+    }
 
     // private async initialize() {
     //     const treeParameters = QueryHelper.timeQuery([0, 1]);
@@ -104,14 +141,22 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
     //     this.rowController.totalHeight = this.totalHeight;
     // }
 
+    handleTreeChange = (nodes: Node[]) => {
+        this.setState({nodes: nodes});
+    }
+
     renderTree(): React.ReactNode {
-        return <React.Fragment>
-            {this.state.timegraphTree.map(entry => {
-                if (entry.parentId !== -1) {
-                    return entry.labels[0] + '\n';
-                }
-            })}
-        </React.Fragment>;
+        return (
+            <Tree nodes={this.state.nodes} onChange={this.handleTreeChange}>
+            {({style, node, ...rest}) => (
+                <div style={style}>
+                    <Expandable node={node} {...rest}>
+                        {node.name}
+                    </Expandable>
+                </div>
+            )}
+            </Tree>
+        );
     }
 
     renderChart(): React.ReactNode {
