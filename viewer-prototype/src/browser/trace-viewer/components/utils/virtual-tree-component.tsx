@@ -48,7 +48,7 @@ export const treeEntryToNodeTree = (tree: Entry[], defaultState?: { [stateKey: s
 }
 
 
-const SELECT = 3;
+export const SELECT = 3;
 
 export const Selection = ({ node, children, onChange, onClick }: any) => {
     const { state: { selected } } = node;

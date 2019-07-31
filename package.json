@@ -14,8 +14,11 @@
     "electron-app"
   ],
   "dependencies": {
+<<<<<<< HEAD
     "@types/classnames": "^2.2.9",
     "react": "^16.8.6",
+=======
+>>>>>>> 3e272e9174bf7e410cb0cc9eea89272524359ca0
     "react-virtualized-tree": "^3.2.3"
   }
 }

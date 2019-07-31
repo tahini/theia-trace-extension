@@ -7,7 +7,7 @@ import { ResponseStatus } from "tsp-typescript-client/lib/models/response/respon
 import { XYSeries } from "tsp-typescript-client/lib/models/xy";
 import { AbstractOutputProps, AbstractOutputState } from "./abstract-output-component";
 import { AbstractTreeOutputComponent } from './abstract-tree-output-component';
-import { Selection, treeEntryToNodeTree } from './utils/virtual-tree-component';
+import { Selection, treeEntryToNodeTree, SELECT } from './utils/virtual-tree-component';
 import Chart = require("chart.js");
 
 const { Expandable } = renderers;
