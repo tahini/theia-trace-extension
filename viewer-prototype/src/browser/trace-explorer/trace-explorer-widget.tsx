@@ -157,6 +157,14 @@ export class TraceExplorerWidget extends ReactWidget {
                     })}
                 </div>
             </div>
+            <div className='trace-explorer-filter'>
+                <div className='trace-explorer-panel-title'>
+                    {'Global Filter'}
+                </div>
+                <div className='trace-explorer-panel-content'>
+                    <input type="text" id="trace-global-filter" name="trace-global-filter"/>
+                </div>
+            </div>
         </div>;
     }
 
