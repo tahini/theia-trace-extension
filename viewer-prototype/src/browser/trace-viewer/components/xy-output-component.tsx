@@ -1,19 +1,22 @@
-import { AbstractOutputProps, AbstractOutputState } from "./abstract-output-component";
-import { AbstractTreeOutputComponent } from './abstract-tree-output-component'
 import * as React from 'react';
 import { Line } from 'react-chartjs-2';
-import { QueryHelper } from "tsp-typescript-client/lib/models/query/query-helper";
+import Tree, { Node, renderers } from 'react-virtualized-tree';
 import { Entry, EntryHeader } from "tsp-typescript-client/lib/models/entry";
+import { QueryHelper } from "tsp-typescript-client/lib/models/query/query-helper";
 import { ResponseStatus } from "tsp-typescript-client/lib/models/response/responses";
 import { XYSeries } from "tsp-typescript-client/lib/models/xy";
-import { CheckboxComponent } from '../components/utils/checkbox-component';
+import { AbstractOutputProps, AbstractOutputState } from "./abstract-output-component";
+import { AbstractTreeOutputComponent } from './abstract-tree-output-component';
+import { Selection, treeEntryToNodeTree, SELECT } from './utils/virtual-tree-component';
 import Chart = require("chart.js");
+
+const { Expandable } = renderers;
 
 type XYOuputState = AbstractOutputState & {
     selectedSeriesId: number[];
-    XYTree: Entry[];
     checkedSeries: number[];
     XYData: any;
+    nodes: Node[];
 }
 
 export class XYOutputComponent extends AbstractTreeOutputComponent<AbstractOutputProps, XYOuputState> {
@@ -27,9 +30,9 @@ export class XYOutputComponent extends AbstractTreeOutputComponent<AbstractOutpu
         this.state = {
             outputStatus: ResponseStatus.RUNNING,
             selectedSeriesId: [],
-            XYTree: [],
             checkedSeries: [],
-            XYData: {}
+            XYData: {},
+            nodes: [],
         }
 
         this.afterChartDraw = this.afterChartDraw.bind(this);
@@ -43,14 +46,14 @@ export class XYOutputComponent extends AbstractTreeOutputComponent<AbstractOutpu
 
     componentDidMount() {
         this.waitAnalysisCompletion();
+        this.updateTree();
     }
 
     componentDidUpdate(prevProps: AbstractOutputProps, prevState: XYOuputState) {
         const viewRangeChanged = this.props.viewRange !== prevProps.viewRange;
         const checkedSeriesChanged = this.state.checkedSeries !== prevState.checkedSeries;
-        const needToUpdate = viewRangeChanged || checkedSeriesChanged || !this.state.XYData || !this.state.XYTree.length;
+        const needToUpdate = viewRangeChanged || checkedSeriesChanged || !this.state.XYData || !this.state.nodes.length;
         if (needToUpdate && this.state.outputStatus === ResponseStatus.COMPLETED) {
-            this.updateTree();
             this.updateXY();
         }
         if (prevProps.style.chartWidth !== this.props.style.chartWidth) {
@@ -59,17 +62,64 @@ export class XYOutputComponent extends AbstractTreeOutputComponent<AbstractOutpu
         this.lineChartRef.current.chartInstance.render();
     }
 
+    handleTreeChange = (nodes: Node[]) => {
+        this.setState({ nodes: nodes });
+    }
+
+    selectNodes: any = (nodes: Node[], selected: Node) =>
+        nodes.map(n => ({
+            ...n,
+            children: n.children ? this.selectNodes(n.children, selected) : [],
+            state: {
+                ...n.state,
+                selected,
+            },
+        }));
+
+    nodeSelectionHandler: any = (nodes: Node[], updatedNode: Node) =>
+        nodes.map((node: Node) => {
+            if (node.id === updatedNode.id && updatedNode.state !== undefined) {
+                return {
+                    ...updatedNode,
+                    children: node.children ? this.selectNodes(node.children, updatedNode.state.selected) : [],
+                };
+            }
+
+            if (node.children) {
+                return { ...node, children: this.nodeSelectionHandler(node.children, updatedNode) };
+            }
+
+            return node;
+        });
+
     renderTree(): React.ReactNode {
         this.onSeriesChecked = this.onSeriesChecked.bind(this);
-        return <React.Fragment>
-            {this.state.XYTree.map(entry => {
-                return <CheckboxComponent key={entry.id}
-                    id={entry.id}
-                    name={entry.labels[0]}
-                    checked={this.state.checkedSeries.find(id => entry.id === id) ? true : false}
-                    onChecked={this.onSeriesChecked} />
-            })}
-        </React.Fragment>;
+        return (
+            <Tree
+                nodes={this.state.nodes}
+                onChange={this.handleTreeChange}
+                extensions={{
+                    updateTypeHandlers: {
+                        [SELECT]: this.nodeSelectionHandler,
+                    },
+                }}
+            >
+                {({ style, node, ...rest }) => (
+                    <div style={style}>
+                        <Expandable node={node} {...rest}
+                            iconsClassNameMap={{
+                                expanded: 'fa fa-angle-down',
+                                collapsed: 'fa fa-angle-right',
+                                lastChild: '',
+                            }}
+                        >
+                            <Selection node={node} {...rest} style={"padding-left: 3px;"} onClick={this.onSeriesChecked}>
+                                {node.name}
+                            </Selection>
+                        </Expandable>
+                    </div>
+                )}
+            </Tree>);
     }
 
     renderChart(): React.ReactNode {
@@ -249,8 +299,9 @@ export class XYOutputComponent extends AbstractTreeOutputComponent<AbstractOutpu
                 return entry.parentId !== -1;
             });
         }
+        const treeNode = treeEntryToNodeTree(tree, {expanded: true, selected: false});
         this.setState({
-            XYTree: tree
+            nodes: treeNode
         });
     }
 

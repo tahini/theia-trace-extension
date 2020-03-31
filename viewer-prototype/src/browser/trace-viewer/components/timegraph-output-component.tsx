@@ -1,6 +1,7 @@
 import * as React from 'react';
+import Tree, { Node, renderers } from 'react-virtualized-tree';
 import { TimeGraphRowElement, TimeGraphRowElementStyle } from "timeline-chart/lib/components/time-graph-row-element";
-import { TimeGraphChart, TimeGraphChartProviders } from "timeline-chart/lib/layer/time-graph-chart";
+import { TimeGraphChartProviders } from "timeline-chart/lib/layer/time-graph-chart";
 import { TimeGraphChartCursors } from 'timeline-chart/lib/layer/time-graph-chart-cursors';
 import { TimeGraphChartGrid } from 'timeline-chart/lib/layer/time-graph-chart-grid';
 import { TimeGraphChartSelectionRange } from 'timeline-chart/lib/layer/time-graph-chart-selection-range';
@@ -18,19 +19,24 @@ import { StyleProvider } from './data-providers/style-provider';
 import { TspDataProvider } from './data-providers/tsp-data-provider';
 import { ReactTimeGraphContainer } from "./utils/timegraph-container-component";
 import { OutputElementStyle } from 'tsp-typescript-client/lib/models/styles';
+import { treeEntryToNodeTree, getExpandedTree } from './utils/virtual-tree-component';
+import { ganttTimeGraphChart } from './gantt-time-graph-chart';
+
+const {Expandable} = renderers;
+
 
 type TimegraphOutputProps = AbstractOutputProps & {
     addWidgetResizeHandler: (handler: () => void) => void;
 }
 
 type TimegraohOutputState = AbstractOutputState & {
-    timegraphTree: TimeGraphEntry[];
+    nodes: Node[];
 }
 
 export class TimegraphOutputComponent extends AbstractTreeOutputComponent<TimegraphOutputProps, TimegraohOutputState> {
     private totalHeight: number = 0;
     private rowController: TimeGraphRowController;
-    private chartLayer: TimeGraphChart;
+    private chartLayer: ganttTimeGraphChart;
     private vscrollLayer: TimeGraphVerticalScrollbar;
     private horizontalContainer: React.RefObject<HTMLDivElement>;
 
@@ -38,12 +44,13 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
     private styleMap = new Map<string, TimeGraphRowElementStyle>();
 
     private selectedElement: TimeGraphRowElement | undefined;
+    private expandNode: Node[];
 
     constructor(props: TimegraphOutputProps) {
         super(props);
         this.state = {
             outputStatus: ResponseStatus.RUNNING,
-            timegraphTree: []
+            nodes: []
         };
         this.tspDataProvider = new TspDataProvider(this.props.tspClient, this.props.traceId, this.props.outputDescriptor.id);
         this.rowController = new TimeGraphRowController(this.props.style.rowHeight, this.totalHeight);
@@ -64,7 +71,7 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
                 }
             }
         };
-        this.chartLayer = new TimeGraphChart('timeGraphChart', providers, this.rowController);
+        this.chartLayer = new ganttTimeGraphChart('timeGraphChart', providers, this.rowController);
         this.vscrollLayer = new TimeGraphVerticalScrollbar('timeGraphVerticalScrollbar', this.rowController);
 
         this.chartLayer.onSelectedRowElementChanged((model) => {
@@ -78,6 +85,7 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
             }
             this.onElementSelected(this.selectedElement);
         });
+        this.expandNode = [];
     }
 
     async componentDidMount() {
@@ -85,7 +93,7 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
     }
 
     async componentDidUpdate(prevProps: TimegraphOutputProps, prevState: TimegraohOutputState) {
-        if (this.state.outputStatus !== ResponseStatus.COMPLETED || !this.state.timegraphTree.length) {
+        if (this.state.outputStatus !== ResponseStatus.COMPLETED || !this.state.nodes.length) {
             const treeParameters = QueryHelper.timeQuery([0, 1]);
             const treeResponse = (await this.props.tspClient.fetchTimeGraphTree<TimeGraphEntry, EntryHeader>(this.props.traceId,
                 this.props.outputDescriptor.id, treeParameters)).getModel();
@@ -93,25 +101,43 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
             this.totalHeight = nbEntries * this.props.style.rowHeight;
             this.rowController.totalHeight = this.totalHeight;
             // TODO Style should not be retreive in the "initialization" part or at least async
+            const nodesEntry = treeEntryToNodeTree(treeResponse.model.entries, {expanded: true});
             const styleResponse = (await this.props.tspClient.fetchStyles(this.props.traceId, this.props.outputDescriptor.id, QueryHelper.query())).getModel();
             this.setState({
                 // outputStatus: ResponseStatus.COMPLETED,
-                timegraphTree: treeResponse.model.entries,
+                nodes: nodesEntry,
                 styleModel: styleResponse.model
             });
+            this.expandNode = Array.from(nodesEntry); // expand by default
         }
     }
 
+    handleTreeChange = (nodes: Node[]) => {
+        this.setState({nodes: nodes});
+        // update the rows
+        this.expandNode = getExpandedTree(nodes);
+        this.chartLayer.syncTreeAndChart(this.expandNode);
+        // FIXME should find a better way
+        this.forceUpdate();
+    }
+
     renderTree(): React.ReactNode {
-        return <React.Fragment>
-            {this.state.timegraphTree.map((entry, i) => {
-                if (entry.parentId !== -1) {
-                    return <p style={{height: this.props.style.rowHeight, margin:0}} key={i}>
-                             {entry.labels[0] + '\n'}   
-                        </p>                
-                }
-            })}
-        </React.Fragment>;
+        return (
+            <Tree nodes={this.state.nodes} onChange={this.handleTreeChange} >
+                {({ style, node, ...rest }) => (
+                    <div style={style}>
+                        <Expandable node={node} {...rest}
+                            iconsClassNameMap={{
+                                expanded: 'fa fa-angle-down',
+                                collapsed: 'fa fa-angle-right',
+                                lastChild: '',
+                            }}>
+                            {node.name}
+                        </Expandable>
+                    </div>
+                )}
+            </Tree>
+        );
     }
 
     renderChart(): React.ReactNode {
@@ -214,6 +240,7 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
                 }
             }
         }
+
         return {
             rows: timeGraphData ? timeGraphData.rows : [],
             range: newRange,
@@ -278,7 +305,7 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
             },
         ];
 
-        let style: TimeGraphRowElementStyle | undefined = backupStyles[0];
+        let style: TimeGraphRowElementStyle | undefined;
         const val = element.label;
         const modelData = element.data;
         if (modelData) {

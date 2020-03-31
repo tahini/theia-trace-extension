@@ -12,5 +12,11 @@
     "viewer-prototype",
     "browser-app",
     "electron-app"
-  ]
+  ],
+  "dependencies": {
+    "@types/classnames": "^2.2.9",
+    "react": "^16.8.6",
+    "react-scroll-sync": "^0.7.0",
+    "react-virtualized-tree": "^3.2.3"
+  }
 }
