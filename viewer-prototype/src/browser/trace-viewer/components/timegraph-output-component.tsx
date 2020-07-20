@@ -107,14 +107,13 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
             this.rowController.totalHeight = this.totalHeight;
             // TODO Style should not be retreive in the "initialization" part or at least async
             const styleResponse = (await this.props.tspClient.fetchStyles(this.props.traceId, this.props.outputDescriptor.id, QueryHelper.query())).getModel();
-            // TODO Remove filter when timeline chart can manage empty rows
-            const filteredTree = treeResponse.model.entries.filter((entry: TimeGraphEntry) => entry.parentId !== -1);
+            const entryTree = treeResponse.model.entries;
             this.setState({
                 // outputStatus: ResponseStatus.COMPLETED,
-                timegraphTree: filteredTree,
+                timegraphTree: entryTree,
                 styleModel: styleResponse.model
             });
-            const treeNodes = listToTree(filteredTree, 0);
+            const treeNodes = listToTree(entryTree, 0);
             const orderedTreeIds = getOrderedIds(treeNodes);
             this.createChartLayer(orderedTreeIds);
         }
@@ -134,8 +133,6 @@ export class TimegraphOutputComponent extends AbstractTreeOutputComponent<Timegr
         return  <EntryTree
             collapsedNodes={this.state.collapsedNodes}
             padding={12}
-            rootId={0}
-            collapseEnabled={false}
             entries={this.state.timegraphTree}
             showCheckboxes={false}
             onCollapse={this.onCollapse}
