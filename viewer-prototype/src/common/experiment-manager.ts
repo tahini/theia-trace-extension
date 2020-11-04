@@ -52,6 +52,7 @@ export class ExperimentManager {
                 experiment = experimentResponse.getModel();
             }
         }
+        console.log("Testing something");
         return experiment;
     }
 
