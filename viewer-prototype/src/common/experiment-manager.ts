@@ -53,6 +53,8 @@ export class ExperimentManager {
             }
         }
         console.log("Testing something");
+        console.log("allo");
+        console.log('boo!');
         return experiment;
     }
 
