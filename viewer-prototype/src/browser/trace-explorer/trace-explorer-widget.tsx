@@ -7,11 +7,11 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareSquare, faCopy } from '@fortawesome/free-solid-svg-icons';
 import ReactModal from 'react-modal';
 import { Emitter } from '@theia/core';
-import { SignalManager } from '../../common/signal-manager';
 import { EditorManager, EditorOpenerOptions } from '@theia/editor/lib/browser';
 import URI from '@theia/core/lib/common/uri';
 import { Experiment } from 'tsp-typescript-client/lib/models/experiment';
-import { ExperimentManager } from '../../common/experiment-manager';
+import { ExperimentManager } from '@trace-viewer/base/lib/experiment-manager';
+import { signalManager, Signals } from '@trace-viewer/base/lib/signal-manager';
 
 export const TRACE_EXPLORER_ID = 'trace-explorer';
 export const TRACE_EXPLORER_LABEL = 'Trace Explorer';
@@ -63,9 +63,8 @@ export class TraceExplorerWidget extends ReactWidget {
         this.title.label = TRACE_EXPLORER_LABEL;
         this.title.caption = TRACE_EXPLORER_LABEL;
         this.title.iconClass = 'trace-explorer-tab-icon';
-        this.toDispose.push(experimentManager.experimentOpenedSignal(experiment => this.onExperimentOpened(experiment)));
-        this.toDispose.push(experimentManager.experimentClosedSignal(experiment => this.onExperimentClosed(experiment)));
-        this.toDispose.push(SignalManager.getInstance().tooltipSignal(tooltip => this.onTooltip(tooltip)));
+        signalManager().on(Signals.EXPERIMENT_OPENED, ({experiment}) => this.onExperimentOpened(experiment));
+        signalManager().on(Signals.EXPERIMENT_CLOSED, ({experiment}) => this.onExperimentClosed(experiment));
         this.initialize();
     }
 
@@ -78,11 +77,6 @@ export class TraceExplorerWidget extends ReactWidget {
         this.tooltip = {};
         this.updateOpenedExperiments();
         this.updateAvailableAnalysis(undefined);
-    }
-
-    private onTooltip(tooltip: { [key: string]: string }) {
-        this.tooltip = tooltip;
-        this.update();
     }
 
     async initialize(): Promise<void> {

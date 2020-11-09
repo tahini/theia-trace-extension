@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "sourceMap": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "module": "commonjs",
+        "target": "ES2020",
+        "rootDir": "./src",
+        "outDir": "./lib",
+        "jsx": "react",
+        "declaration": true,
+        "declarationMap": true,
+        "resolveJsonModule": true
+    },
+    "include": [
+        "src"
+    ]
+}
