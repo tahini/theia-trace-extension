@@ -15,24 +15,27 @@
   },
   "dependencies": {
     "@theia/core": "latest",
+    "@theia/cpp-debug": "latest",
+    "@theia/editor": "latest",
     "@theia/filesystem": "latest",
-    "@theia/workspace": "latest",
-    "@theia/preferences": "latest",
+    "@theia/getting-started": "latest",
+    "@theia/keymaps": "latest",
+    "@theia/markers": "latest",
+    "@theia/messages": "latest",
+    "@theia/monaco": "latest",
     "@theia/navigator": "latest",
+    "@theia/preferences": "latest",
     "@theia/process": "latest",
     "@theia/terminal": "latest",
-    "@theia/editor": "latest",
-    "@theia/markers": "latest",
-    "@theia/monaco": "latest",
-    "@theia/messages": "latest",
-    "@theia/cpp-debug": "latest",
     "@theia/vsx-registry": "latest",
-    "@theia/keymaps": "latest",
-    "@theia/getting-started": "latest",
-    "theia-trace-viewer": "0.0.0"
+    "@theia/workspace": "latest",
+    "theia-trace-viewer": "0.0.0",
+    "zipkin": "^0.22.0",
+    "zipkin-transport-http": "^0.22.0"
   },
   "devDependencies": {
-    "@theia/cli": "latest"
+    "@theia/cli": "latest",
+    "zipkin": "^0.22.0"
   },
   "scripts": {
     "prepare": "theia build --mode development && yarn download:plugins",

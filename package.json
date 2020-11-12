@@ -21,7 +21,6 @@
     "packages/base",
     "packages/react-components",
     "viewer-prototype",
-    "browser-app",
-    "electron-app"
+    "browser-app"
   ]
 }
